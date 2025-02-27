@@ -2,13 +2,38 @@ var fs = require('fs');
 var Promise = require('promise');
 var plist = require('plist');
 
+/**
+ * @typedef {"major_version" | "minor_version" | "application_version" | "date" | "features" | "show_content_ratings" | "library_persistent_id" | "music_folder"} ItunesLibraryDataProperties
+ */
+
+/**
+ * @typedef {Record<ItunesLibraryDataProperties, plist.PlistValue> & { tracks: Track[]; playlists: Playlist[]; }} ItunesLibraryData
+ */
+
+/**
+ * @typedef {'track_id' | 'size' | 'total_time' | 'date_modified' | 'date_added' | 'bit_rate' | 'sample_rate' | 'persistent_id' | 'track_type' | 'file_folder_count' | 'library_folder_count' | 'name' | 'artist' | 'album' | 'genre' | 'kind' | 'location'} TrackProperties
+ */
+
+/**
+ * @typedef {Record<TrackProperties, plist.PlistValue>} Track
+ */
+
+/**
+ * @typedef {'master' | 'playlist_id' | 'playlist_persistent_id' | 'all_items' | 'visible' | 'name' | 'playlist_items' | 'distinguished_kind' | 'music' | 'smart_info' | 'smart_criteria' | 'movies' | 'tv_shows' | 'podcasts' | 'itunesu' | 'audiobooks' | 'books'} PlaylistProperties
+*/
+
+/**
+ * @typedef {Record<PlaylistProperties, plist.PlistValue> & { playlist_items: Track[]; }} Playlist
+*/
+
 module.exports = function ItunesLibrary() {
+  /** @type {ItunesLibraryData} */
   var data;
   var ready = false;
   var instance = this;
 
   //opens an itunes library xml file and reads and reformats the data
-  this.open = function open(filename) {
+  this.open = function open(/** @type {string} */ filename) {
     if (!validateFilename(filename)) {
       throw 'Invalid file path!';
     }
@@ -22,7 +47,7 @@ module.exports = function ItunesLibrary() {
           try {
             var xmlData = dat.toString();
             xmlData = xmlData.replace(/[\n\t\r]/g, '');
-            data = plist.parse(xmlData);
+            data = /** @type {ItunesLibraryData} */ (plist.parse(xmlData));
             reformat_keys(data);
             ready = true;
             fulfill();
@@ -40,8 +65,10 @@ module.exports = function ItunesLibrary() {
     return data;
   };
 
-  module.exports.Track = function Track(trackData) {
+  /** @this {Track} */
+  module.exports.Track = function Track(/** @type {Track} */ trackData) {
     //list of all the properties that an iTunes library track will have
+    /** @type {TrackProperties[]} */
     var properties = [
       'track_id',
       'size',
@@ -97,7 +124,7 @@ module.exports = function ItunesLibrary() {
     })
   };
 
-  this.getTrackByIDSync = function getTrackByIDSync(id) {
+  this.getTrackByIDSync = function getTrackByIDSync(/** @type {number} */ id) {
     var Track = module.exports.Track;
     if (ready) {
       if (id !== null) {
@@ -118,7 +145,7 @@ module.exports = function ItunesLibrary() {
     }
   };
 
-  this.getTrackByID = function getTrackByID(id) {
+  this.getTrackByID = function getTrackByID(/** @type {number} */ id) {
     var Track = module.exports.Track;
     return new Promise(function (fulfill, reject) {
       if (ready) {
@@ -147,9 +174,11 @@ module.exports = function ItunesLibrary() {
     })
   };
 
-  module.exports.Playlist = function Playlist(playlistData) {
+  /** @this {Playlist} */
+  module.exports.Playlist = function Playlist(/** @type {Playlist} */ playlistData) {
     var getTrackByIDSync = instance.getTrackByIDSync;
     var thisPlaylist = this;
+    /** @type {PlaylistProperties[]} */
     var properties = [
       'master',
       'playlist_id',
@@ -232,7 +261,7 @@ module.exports = function ItunesLibrary() {
     })
   };
 
-  this.getPlaylistByID = function getPlaylistByID(id) {
+  this.getPlaylistByID = function getPlaylistByID(/** @type {number} */ id) {
     var Playlist = module.exports.Playlist;
     return new Promise(function (fulfill, reject) {
       if (ready) {
@@ -261,7 +290,7 @@ module.exports = function ItunesLibrary() {
     })
   };
 
-  this.getPlaylistByIDSync = function getPlaylistByIDSync(id) {
+  this.getPlaylistByIDSync = function getPlaylistByIDSync(/** @type {number} */ id) {
     var Playlist = module.exports.Playlist;
     if (ready) {
       if (id !== null && id !== undefined) {
@@ -356,20 +385,22 @@ module.exports = function ItunesLibrary() {
   };
 
 //function to make sure we're given a valid file
-  function validateFilename(fname) {
+  function validateFilename(/** @type {string} */ fname) {
     //will fail if filename is null or not a string, file doesn't exist, or file is a directory
     return (fname !== null && typeof fname === 'string' && fs.existsSync(fname) && !fs.lstatSync(fname).isDirectory());
   }
 
 //function to reformat all the keys from the plist file to not be strings with spaces and stuff in them
-  function reformat_keys(data) {
+  function reformat_keys(/** @type {plist.PlistObject} */ data) {
     Object.keys(data).forEach(function (key) {
       var value = data[key];
       if (typeof value === 'object') {
-        reformat_keys(value);
+        reformat_keys(/** @type {plist.PlistObject} */ (value));
       }
+      // @ts-expect-error - readonly indexing
       delete data[key];
       var newkey = key.toLowerCase().replace(/\s/g, '_');
+      // @ts-expect-error - readonly indexing
       data[newkey] = value;
     });
   }

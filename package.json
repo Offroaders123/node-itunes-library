@@ -5,10 +5,18 @@
   "license": "MIT",
   "author": "evan3334",
   "version": "1.1.2",
+  "scripts": {
+    "dev": "tsc --watch"
+  },
   "dependencies": {
     "plist": "^2.1.0",
     "promise": "^8.0.1",
     "fs": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/plist": "^3.0.5",
+    "typescript": "^5.7.3"
   },
   "main": "ItunesLibrary.js"
 }
